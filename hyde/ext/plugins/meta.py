@@ -8,6 +8,8 @@ from functools import partial
 from operator import attrgetter
 import re
 import sys
+from datetime import datetime
+from functools import partial
 
 from hyde._compat import basestring, filter, iteritems, str
 from hyde.exceptions import HydeException
@@ -467,14 +469,22 @@ def attributes_checker(item, attributes=None):
         return False
 
 
+def sort_as_date(attr, resource):
+    get_attr_value = attrgetter(*attr)
+    return datetime.strptime(get_attr_value(resource), "%d.%m.%Y")
+
+
 def sort_method(node, settings=None):
     """
     Sorts the resources in the given node based on the
     given settings.
     """
     attr = 'name'
+    type_name = 'string'
     if settings and hasattr(settings, 'attr') and settings.attr:
         attr = settings.attr
+    if settings and hasattr(settings, 'type_name') and settings.type_name:
+        type_name = settings.type_name
     reverse = False
     if settings and hasattr(settings, 'reverse'):
         reverse = settings.reverse
@@ -486,8 +496,13 @@ def sort_method(node, settings=None):
 
     resources = filter(lambda x: excluder_(x) and filter_(x),
                        node.walk_resources())
+    
+    key_func = attrgetter(*attr)
+    if type_name == 'date':
+        key_func = partial(sort_as_date, attr)
+
     return sorted(resources,
-                  key=attrgetter(*attr),
+                  key=key_func,
                   reverse=reverse)
 
 
